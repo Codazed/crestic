@@ -1,0 +1,9 @@
+[Unit]
+Description=Timer for %ENTRY% backup: [%CALENDARENTRY%]
+
+[Timer]
+OnCalendar=%CALENDARENTRY%
+Persistent=true
+
+[Install]
+WantedBy=timers.target

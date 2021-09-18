@@ -1,0 +1,10 @@
+[Unit]
+Description=Restic backup for %ENTRY%
+Requires=network.target
+
+[Service]
+Type=oneshot
+ExecStart=%ROOTPATH%/run.sh %ENTRY%
+
+[Install]
+WantedBy=multi-user.target
