@@ -4,7 +4,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 . $SCRIPT_DIR/setup.sh
 
-BUCKET=$1
+REPO_LOC=$1
 ENTRY=$2
 PASSWORD=$3
 DIR_TO_BACKUP=$4
@@ -23,7 +23,7 @@ if [[ -f "$LOCKFILE_DIR/$ENTRY" ]]; then
 fi
 
 export RESTIC_CACHE_DIR=$SCRIPT_DIR/.cache
-export RESTIC_REPOSITORY="b2:$BUCKET:/$ENTRY"
+export RESTIC_REPOSITORY="$REPO_LOC"
 export RESTIC_PASSWORD_FILE=$PASSWORD
 
 echo $$ > $LOCKFILE_DIR/$ENTRY
