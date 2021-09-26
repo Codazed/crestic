@@ -2,7 +2,7 @@
 
 SCRIPT_PATH=$(dirname $(readlink -f $0))
 
-IFS=$'\n' key=($(cat $SCRIPT_PATH/key))
+IFS=$'\n' b2_key=($(cat $SCRIPT_PATH/.key-b2))
 
-export B2_ACCOUNT_ID=${key[0]}
-export B2_ACCOUNT_KEY=${key[1]}
+export B2_ACCOUNT_ID=${b2_key[0]}
+export B2_ACCOUNT_KEY=${b2_key[1]}
