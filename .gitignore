@@ -1,3 +1,4 @@
-.cache/
-key
-entries/
+.venv*/
+cache/
+tmp/
+config.yml
