@@ -164,5 +164,21 @@ class ResticGenerator:
         print(command)
         subprocess.run(command, env=self.env)
 
+    def unlock(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('entry')
+        args = parser.parse_args(sys.argv[2:])
+        entry = args.entry
+
+        if not entry in self.config['entries']:
+            print(f'Entry {entry} is not defined!')
+            exit(1)
+
+        self.__initialize__(entry)
+
+        command = [self.restic_bin, '--verbose', 'unlock']
+        print(command)
+        subprocess.run(command, env=self.env)
+
 if __name__ == '__main__':
     ResticGenerator()
