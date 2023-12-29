@@ -1,2 +1,0 @@
-PyYAML==6.0
-git+https://github.com/codazed/systemd-service.git@main
