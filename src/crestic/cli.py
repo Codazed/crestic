@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(
     epilog="For source code and issue-reporting, go to https://gitlab.com/codazed/crestic",
 )
 
-parser.add_argument("-c", '--config', metavar="PATH", help="config file to use", default=find_config())
+parser.add_argument("-c", "--config", metavar="PATH", help="config file to use", default=find_config())
 
 subparsers = parser.add_subparsers(dest="subcommand", metavar="SUBCOMMAND", required=True)
 
@@ -18,7 +18,9 @@ parser_list.add_argument("--paths", action="store_true", help="show paths in out
 # Commands for Restic operations
 restic_operation_parsers: list[argparse.ArgumentParser] = []
 
-parser_backup = subparsers.add_parser("backup", help="create a new backup of files and/or directories for the specified entry")
+parser_backup = subparsers.add_parser(
+    "backup", help="create a new backup of files and/or directories for the specified entry"
+)
 restic_operation_parsers.append(parser_backup)
 
 # TODO: restic cache
@@ -31,13 +33,17 @@ restic_operation_parsers.append(parser_check)
 # TODO: restic find
 
 parser_forget = subparsers.add_parser("forget", help="remove snapshots from the repo for the specified entry")
-parser_forget.add_argument("--prune", action="store_true", help="'automatically run the \"prune\" command if snapshots have been removed'")
+parser_forget.add_argument(
+    "--prune", action="store_true", help="'automatically run the \"prune\" command if snapshots have been removed'"
+)
 # TODO: Add args for specifying removal policy manually
 # TODO: Add args for specifying a single snapshot to remove
 restic_operation_parsers.append(parser_forget)
 
 parser_init = subparsers.add_parser("init", help="initialize a new repository for the specified entry")
-parser_init.add_argument("-V", "--repository-version", metavar="version", help="restic repository version to use (Restic v0.14.0+)")
+parser_init.add_argument(
+    "-V", "--repository-version", metavar="version", help="restic repository version to use (Restic v0.14.0+)"
+)
 restic_operation_parsers.append(parser_init)
 
 # TODO: restic list
@@ -58,20 +64,18 @@ restic_operation_parsers.append(parser_snapshots)
 parser_unlock = subparsers.add_parser("unlock", help="remove locks other processes created for the specified entry")
 restic_operation_parsers.append(parser_unlock)
 
-for restopparser in restic_operation_parsers:
-    restopparser.add_argument("entry", help="the entry to perform the operation for")
-    restopparser.add_argument("-d", "--dry-run", action="store_true", help="perform dry-run of Restic command")
-    restopparser.add_argument("-v", "--verbose", action="store_true", help="verbose output")
+for op_parser in restic_operation_parsers:
+    op_parser.add_argument("entry", help="the entry to perform the operation for")
+    op_parser.add_argument("-d", "--dry-run", action="store_true", help="perform dry-run of Restic command")
+    op_parser.add_argument("-v", "--verbose", action="store_true", help="verbose output")
 
 
 def main():
     args = vars(parser.parse_args())
     from crestic.crestic import Crestic
+
     Crestic(
-        operation_str=args["subcommand"],
-        config_path=args["config"],
-        entry_str=args.get("entry", None),
-        args=args
+        operation_str=args["subcommand"], config_path=args["config"], entry_str=args.get("entry", None), args=args
     ).go()
 
 

@@ -13,6 +13,12 @@ PyYAML = "^6.0.1"
 [tool.poetry.scripts]
 crestic = "crestic.cli:main"
 
+[tool.poetry.group.dev.dependencies]
+black = "^23.12.1"
+
+[tool.black]
+line-length = 120
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

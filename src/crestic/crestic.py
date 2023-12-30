@@ -48,7 +48,7 @@ class Crestic:
 
         restic = self.config.globals.restic_bin
         restic_version = subprocess.check_output([restic, "version"]).decode().replace("\n", "")
-        restic_version_regex = "restic [\d\.]+ compiled with"
+        restic_version_regex = r"restic [\d\.]+ compiled with"
 
         if not re.match(restic_version_regex, restic_version):
             print(f"Invalid restic binary detected at path [{restic}], version output was [{restic_version}]")
@@ -94,7 +94,7 @@ class Crestic:
 
     def backup_entry(self):
         exclusions = self.entry.exclusions
-        cmd_exclusions = [v for elt in exclusions for v in ('--iexclude', elt)]
+        cmd_exclusions = [v for elt in exclusions for v in ("--iexclude", elt)]
 
         command = ["backup", "--one-file-system", "--verbose"]
         command.extend(cmd_exclusions)

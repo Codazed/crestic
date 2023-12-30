@@ -46,6 +46,7 @@ def _get_tmp_dir():
     else:
         raise PlatformNotImplementedError()
 
+
 def _find_config_win():
     config_home = _get_home()
     if os.path.exists(Path(config_home) / "config.yml"):
@@ -53,15 +54,14 @@ def _find_config_win():
     else:
         return None
 
+
 def _find_config_linux():
-    paths_to_search = (
-        "/etc/crestic/config.yml",
-        Path(_get_home()) / "config.yml"
-    )
+    paths_to_search = ("/etc/crestic/config.yml", Path(_get_home()) / "config.yml")
     for path in paths_to_search:
         if os.path.exists(path):
             return str(path)
     return None
+
 
 def find_config():
     if platform.system() == "Windows":
@@ -71,8 +71,10 @@ def find_config():
     else:
         raise PlatformNotImplementedError()
 
+
 def find_restic():
-    return shutil.which('restic')
+    return shutil.which("restic")
+
 
 @dataclass
 class B2Config:
@@ -90,6 +92,7 @@ class GlobalConfig:
     def __post_init__(self):
         if self.b2 is not None:
             self.b2 = B2Config(**self.b2)
+
 
 class RepositoryType(StrEnum):
     B2 = "b2"
