@@ -1,0 +1,34 @@
+global:
+  # (Optional) Location for Restic cache directory, a default for Linux is shown below
+  cache_dir: $HOME/.cache/crestic
+  # (Optional) Location for Restic temporary directory, default for Linux is shown below
+  tmp_dir: /tmp/crestic
+  # (Optional) Global settings for B2 repositories, can be overridden in the entry
+  b2:
+    account_id: 0000111122223333444455556
+    account_key: A00112233445566778899AABBCCDDEE
+
+entries:
+  CresticTest:
+    # Location for the repository
+    repository: "b2:bucket_name:/path-in-bucket"
+    # (Optional) Repository version, applies to Restic versions >=0.14.0
+    repository_version: 2
+    # Repository password
+    password: super-secret-password
+    # These are the paths you want to back up
+    paths:
+      - /any/local/path
+      - /another/local/path
+    # (Optional) Custom B2 settings for the entry
+    b2:
+      account_id: 1111222233334444555566667
+      account_key: B112233445566778899AABBCCDDEEFF
+    # (Optional) The snapshot retention policy when running 'crestic forget'
+    retention:
+      last: 24
+      hourly: 24
+      daily: 7
+      weekly: 5
+      monthly: 12
+      yearly: 2
