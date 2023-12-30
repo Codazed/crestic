@@ -10,7 +10,12 @@ import subprocess
 class Operations(StrEnum):
     LIST = "list"
     BACKUP = "backup"
+    CHECK = "check"
+    FORGET = "forget"
     INIT = "init"
+    PRUNE = "prune"
+    SNAPSHOTS = "snapshots"
+    UNLOCK = "unlock"
 
 
 @dataclass
@@ -105,10 +110,39 @@ class Crestic:
         command = ["init", "--repository-version", self.entry.repository_version]
         self.exec_restic_cmd(command)
 
+    def check_entry(self):
+        self.exec_restic_cmd(["check"])
+
+    def forget_entry(self):
+        command = ["forget"]
+
+        policy = self.entry.retention
+
+        if policy is not None:
+            command.extend(str(policy).split(" "))
+
+        if self.args.get("prune", False):
+            command.append("--prune")
+        self.exec_restic_cmd(command)
+
+    def prune_entry(self):
+        self.exec_restic_cmd(["prune"])
+
+    def list_entry_snapshots(self):
+        self.exec_restic_cmd(["snapshots"])
+
+    def unlock_entry(self):
+        self.exec_restic_cmd(["unlock"])
+
     def go(self):
-        if self.operation == Operations.LIST:
-            self.print_entries()
-        elif self.operation == Operations.BACKUP:
-            self.backup_entry()
-        elif self.operation == Operations.INIT:
-            self.initialize_entry()
+        mapping = {
+            Operations.LIST: self.print_entries,
+            Operations.BACKUP: self.backup_entry,
+            Operations.CHECK: self.check_entry,
+            Operations.FORGET: self.forget_entry,
+            Operations.INIT: self.initialize_entry,
+            Operations.PRUNE: self.prune_entry,
+            Operations.SNAPSHOTS: self.list_entry_snapshots,
+            Operations.UNLOCK: self.unlock_entry,
+        }
+        mapping[self.operation]()

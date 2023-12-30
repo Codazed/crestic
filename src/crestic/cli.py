@@ -34,7 +34,7 @@ restic_operation_parsers.append(parser_check)
 
 parser_forget = subparsers.add_parser("forget", help="remove snapshots from the repo for the specified entry")
 parser_forget.add_argument(
-    "--prune", action="store_true", help="'automatically run the \"prune\" command if snapshots have been removed'"
+    "--prune", action="store_true", help="automatically run the \"prune\" command if snapshots have been removed"
 )
 # TODO: Add args for specifying removal policy manually
 # TODO: Add args for specifying a single snapshot to remove
