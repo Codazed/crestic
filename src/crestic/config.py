@@ -11,6 +11,7 @@ class PlatformNotImplementedError(NotImplementedError):
     def __init__(self):
         super().__init__(f"Unimplemented platform {platform.system()}")
 
+
 def _get_home():
     if platform.system() == "Windows":
         return str(Path(os.environ.get("APPDATA")) / "crestic")
@@ -97,6 +98,7 @@ class RepositoryType(StrEnum):
     B2 = "b2"
     FILESYSTEM = "fs"
 
+
 @dataclass
 class RetentionPolicy:
     last: int = None
@@ -113,6 +115,7 @@ class RetentionPolicy:
                 string.extend([f"--keep-{attr}", str(val)])
         return " ".join(string)
 
+
 @dataclass
 class Entry:
     name: str
@@ -121,6 +124,7 @@ class Entry:
     paths: tuple[str]
     exclusions: tuple[str] = ()
     repository_version: int = 2
+    schedule: str = None
     retention: RetentionPolicy = None
     b2: B2Config | None = None
 
@@ -136,6 +140,7 @@ class Entry:
             self.retention = RetentionPolicy(**self.retention)
         if self.b2 is not None:
             self.b2 = B2Config(**self.b2)
+
 
 @dataclass
 class Config:

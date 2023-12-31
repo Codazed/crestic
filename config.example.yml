@@ -20,6 +20,13 @@ entries:
     paths:
       - /any/local/path
       - /another/local/path
+    # (Optional) paths to exclude, follow syntax for restic --iexclude
+    exclude:
+      - "*.zip"
+      - "*.tar.*"
+      - "cache/"
+    # (Required for systemd units) Cron syntax for the generated systemd timer
+    schedule: "*-*-* *:0/10:00"
     # (Optional) Custom B2 settings for the entry
     b2:
       account_id: 1111222233334444555566667
