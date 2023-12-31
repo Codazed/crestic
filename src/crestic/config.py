@@ -32,8 +32,10 @@ def _get_cache_dir():
         xdg_home = "XDG_CACHE_HOME"
         if xdg_home in os.environ.keys():
             return str(Path(os.environ.get(xdg_home)))
-        else:
+        elif "HOME" in os.environ.keys():
             return str(Path(os.environ.get("HOME")) / ".cache" / "crestic")
+        else:
+            return "/var/tmp/crestic"
     else:
         raise PlatformNotImplementedError()
 
