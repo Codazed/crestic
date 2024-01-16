@@ -315,9 +315,9 @@ class Crestic:
         command = ["systemctl"]
         if not is_root():
             command.append("--user")
-        if self.args["enabled"]:
+        if self.args["status"] == "enabled":
             command.append("enable")
-        elif self.args["disabled"]:
+        elif self.args["status"] == "disabled":
             command.append("disable")
         command.extend(["--now", timer_name])
         subprocess.run(command)

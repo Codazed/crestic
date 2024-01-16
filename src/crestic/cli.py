@@ -30,9 +30,7 @@ group.add_argument("--timer", action="store_true", help="only show timer status"
 
 parser_timer_ctrl = subparsers.add_parser(Operations.TIMER_CTRL, help="control the systemd timer")
 parser_timer_ctrl.add_argument("entry", help="the entry to perform the operation for")
-group = parser_timer_ctrl.add_mutually_exclusive_group()
-group.add_argument("--enabled", action="store_true", help="enable the timer")
-group.add_argument("--disabled", action="store_true", help="disable the timer")
+parser_timer_ctrl.add_argument("status", choices=["enabled", "disabled"], help="enable/disable the timer")
 
 # Commands for Restic operations
 restic_operation_parsers: list[argparse.ArgumentParser] = []
