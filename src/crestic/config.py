@@ -19,8 +19,10 @@ def _get_home():
         xdg_home = "XDG_CONFIG_HOME"
         if xdg_home in os.environ.keys():
             return str(Path(os.environ.get(xdg_home)) / "crestic")
-        else:
+        elif "HOME" in os.environ.keys():
             return str(Path(os.environ.get("HOME")) / ".config" / "crestic")
+        else:
+            return os.getcwd()
     else:
         raise PlatformNotImplementedError()
 
