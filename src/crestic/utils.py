@@ -14,3 +14,13 @@ def systemd_available() -> bool:
 def assert_systemd_available():
     if not systemd_available():
         sys.exit("This operation is only available on a system running systemd")
+
+
+def stdout(*message: any):
+    print(" ".join(message), file=sys.stdout, flush=True)
+
+
+def stderr(*message: any, exit: bool = False):
+    print(" ".join(message), file=sys.stderr, flush=True)
+    if exit:
+        sys.exit(1)

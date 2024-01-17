@@ -53,17 +53,19 @@ def _get_tmp_dir():
 
 def _find_config_win():
     config_home = _get_home()
-    if os.path.exists(Path(config_home) / "config.yml"):
-        return str(Path(config_home) / "config.yml")
+    paths_to_search = (_get_home(), os.getcwd())
+    for path in paths_to_search:
+        if os.path.exists(Path(path) / "config.yml"):
+            return str(Path(path) / "config.yml")
     else:
         return None
 
 
 def _find_config_linux():
-    paths_to_search = ("/etc/crestic/config.yml", Path(_get_home()) / "config.yml")
+    paths_to_search = ("/etc/crestic", _get_home(), os.getcwd())
     for path in paths_to_search:
-        if os.path.exists(path):
-            return str(path)
+        if os.path.exists(Path(path) / "config.yml"):
+            return str(Path(path) / "config.yml")
     return None
 
 
@@ -111,12 +113,16 @@ class RetentionPolicy:
     weekly: int = None
     monthly: int = None
     yearly: int = None
+    tag: list[str] = None
 
     def __str__(self):
         string = []
         for attr, val in vars(self).items():
-            if val is not None:
+            if type(val) is int:
                 string.extend([f"--keep-{attr}", str(val)])
+            elif type(val) is list:
+                for elem in val:
+                    string.extend([f"--keep-{attr}", str(elem)])
         return " ".join(string)
 
 

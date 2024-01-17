@@ -1,6 +1,6 @@
 import configparser
 from crestic.config import Config, Entry, RepositoryType
-from crestic.utils import is_root, assert_systemd_available
+from crestic.utils import is_root, assert_systemd_available, stdout, stderr
 from dataclasses import dataclass, field, InitVar
 from enum import StrEnum
 import os.path
@@ -121,14 +121,18 @@ class Crestic:
         self.config = Config(self.config_path)
 
         if entry_str is not None:
-            self.entry = self.config.entries[entry_str]
+            try:
+                self.entry = self.config.entries[entry_str]
+            except KeyError:
+                valid_entries = ", ".join(self.config.entries.keys())
+                stderr(f"Unknown entry {entry_str}, valid entries: {valid_entries}", exit=True)
 
     def print_entries(self):
         for entry in self.config.entries.keys():
-            print(entry)
+            stdout(entry)
             if self.args.get("paths", False):
                 for path in self.config.entries[entry].paths:
-                    print("\t-", path)
+                    stdout("  -", path)
 
     def validate_restic(self):
         if self.config.globals.restic_bin is None:
@@ -139,10 +143,10 @@ class Crestic:
         restic_version_regex = r"restic [\d\.]+ compiled with"
 
         if not re.match(restic_version_regex, restic_version):
-            print(f"Invalid restic binary detected at path [{restic}], version output was [{restic_version}]")
+            stderr(f"Invalid restic binary detected at path [{restic}], version output was [{restic_version}]")
             return False
 
-        print(f"Using [{restic_version}] located at [{restic}]")
+        stdout(f"Using [{restic_version}] located at [{restic}]")
         return True
 
     def set_env(self, key: str, value: str):
@@ -177,14 +181,31 @@ class Crestic:
         restic = self.config.globals.restic_bin
         command = [str(part) for part in command]
         full_cmd = [restic] + command
-        print(f"Executing [{' '.join(full_cmd)}]")
-        subprocess.run(full_cmd, env=self.env)
+        if self.args["print_command"]:
+            stdout(f"Would run the below command:\n{' '.join(full_cmd)}")
+        else:
+            stdout(f"Executing [{' '.join(full_cmd)}]")
+            subprocess.run(full_cmd, env=self.env)
 
     def backup_entry(self):
         exclusions = self.entry.exclusions
         cmd_exclusions = [v for elt in exclusions for v in ("--iexclude", elt)]
 
         command = ["backup", "--one-file-system", "--verbose"]
+
+        if self.args["host"] is not None:
+            command.extend(["--host", self.args["host"]])
+        if self.args["parent"] is not None:
+            command.extend(["--parent", self.args["parent"]])
+        if self.args["tag"] is not None:
+            for tag in self.args["tag"]:
+                if type(tag) is list:
+                    for sub in tag:
+                        command.extend(["--tag", sub])
+                else:
+                    command.extend(["--tag", tag])
+
+
         command.extend(cmd_exclusions)
         command.extend(self.entry.paths)
         self.exec_restic_cmd(command)
@@ -264,12 +285,12 @@ class Crestic:
 
         with open(units_location / service_name, "w") as f:
             service_config.write(f)
-            print("Created unit", units_location / service_name)
+            stdout("Created unit", units_location / service_name)
         with open(units_location / timer_name, "w") as f:
             timer_config.write(f)
-            print("Created unit", units_location / timer_name)
+            stdout("Created unit", units_location / timer_name)
 
-        print("Enabling timer")
+        stdout("Enabling timer")
         command = ["systemctl"]
         if not is_root():
             command.append("--user")

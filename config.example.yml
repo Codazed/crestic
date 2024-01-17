@@ -39,3 +39,7 @@ entries:
       weekly: 5
       monthly: 12
       yearly: 2
+      tag:
+        - tag1
+        - tag2
+        - tag3
