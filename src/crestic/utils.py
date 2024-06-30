@@ -17,10 +17,12 @@ def assert_systemd_available():
 
 
 def stdout(*message: any):
+    message = (str(msg) for msg in message)
     print(" ".join(message), file=sys.stdout, flush=True)
 
 
 def stderr(*message: any, exit: bool = False):
+    message = (str(msg) for msg in message)
     print(" ".join(message), file=sys.stderr, flush=True)
     if exit:
         sys.exit(1)
