@@ -181,6 +181,8 @@ class Crestic:
         restic = self.config.globals.restic_bin
         command = [str(part) for part in command]
         full_cmd = [restic] + command
+        if self.args["dry_run"]:
+            full_cmd.append("--dry-run")
         if self.args["print_command"]:
             stdout(f"Would run the below command:\n{' '.join(full_cmd)}")
         else:
