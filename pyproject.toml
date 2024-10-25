@@ -3,7 +3,7 @@ name = "crestic"
 version = "0.1.0"
 description = "Configurable command invocation for restic"
 authors = ["Joshua Luce <luce@codazed.dev>"]
-license = "AGPL-3.0-or-later"
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
