@@ -2,7 +2,7 @@
 name = "crestic"
 version = "0.1.0"
 description = "Configurable command invocation for restic"
-authors = []
+authors = ["Joshua Luce <luce@codazed.dev>"]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
 
