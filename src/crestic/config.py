@@ -140,6 +140,7 @@ class Task:
         if self.b2 is not None:
             self.b2 = B2Config(**self.b2)
 
+
 class Config:
     cache_dir: str
     tmp_dir: str
