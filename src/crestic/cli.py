@@ -46,14 +46,18 @@ restic_operation_parsers.append(parser_backup)
 
 # TODO: restic cache
 
-parser_check = subparsers.add_parser(str(Operations.CHECK), help="check the repository for errors for the specified entry")
+parser_check = subparsers.add_parser(
+    str(Operations.CHECK), help="check the repository for errors for the specified entry"
+)
 restic_operation_parsers.append(parser_check)
 
 # TODO: restic diff
 # TODO: restic dump
 # TODO: restic find
 
-parser_forget = subparsers.add_parser(str(Operations.FORGET), help="remove snapshots from the repo for the specified entry")
+parser_forget = subparsers.add_parser(
+    str(Operations.FORGET), help="remove snapshots from the repo for the specified entry"
+)
 parser_forget.add_argument(
     "--prune", action="store_true", help='automatically run the "prune" command if snapshots have been removed'
 )

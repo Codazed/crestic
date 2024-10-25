@@ -207,7 +207,6 @@ class Crestic:
                 else:
                     command.extend(["--tag", tag])
 
-
         command.extend(cmd_exclusions)
         command.extend(self.entry.paths)
         self.exec_restic_cmd(command)
