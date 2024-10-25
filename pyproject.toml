@@ -14,7 +14,7 @@ PyYAML = "^6.0.1"
 crestic = "crestic.cli:main"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.12.1"
+black = "^24.10.0"
 
 [tool.black]
 line-length = 120
