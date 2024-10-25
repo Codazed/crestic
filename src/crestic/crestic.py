@@ -1,5 +1,5 @@
 import configparser
-from crestic.config import Config, Entry, RepositoryType
+from crestic.config import Config, Task, RepositoryType
 from crestic.utils import is_root, assert_systemd_available, stdout, stderr
 from dataclasses import dataclass, field, InitVar
 from enum import StrEnum
@@ -9,6 +9,8 @@ import re
 import shutil
 import subprocess
 import sys
+
+from prettytable import PrettyTable as Table
 
 systemd_unit_prefix = "crestic--"
 
@@ -22,11 +24,11 @@ def get_units_location():
         return Path(f"{os.environ.get('HOME')}/.config/systemd/user")
 
 
-def entry_systemd_filenames(entry: Entry | str):
-    if type(entry) is Entry:
-        name = entry.name
+def task_systemd_filenames(task: Task | str):
+    if type(task) is Task:
+        name = task.name
     else:
-        name = entry
+        name = task
     return f"{systemd_unit_prefix}{name}.service", f"{systemd_unit_prefix}{name}.timer"
 
 
@@ -38,48 +40,48 @@ def reload_systemd():
     subprocess.run(command)
 
 
-def entry_already_installed(entry: Entry | str):
+def task_already_installed(task: Task | str):
     location = get_units_location()
-    return False not in [os.path.exists(location / filename) for filename in entry_systemd_filenames(entry)]
+    return False not in [os.path.exists(location / filename) for filename in task_systemd_filenames(task)]
 
 
-def get_installed_entries():
+def get_installed_tasks():
     units_location = get_units_location()
-    found_entries = set(
+    found_tasks = set(
         [
             f.replace(systemd_unit_prefix, "").replace(".service", "").replace(".timer", "")
             for f in os.listdir(units_location)
             if f.startswith(systemd_unit_prefix)
         ]
     )
-    return [entry for entry in found_entries if entry_already_installed(entry)]
+    return [task for task in found_tasks if task_already_installed(task)]
 
 
-def assert_entry_installed(entry: Entry | str):
-    if not entry_already_installed(entry):
-        if type(entry) is Entry:
-            entry_name = entry.name
+def assert_task_installed(task: Task | str):
+    if not task_already_installed(task):
+        if type(task) is Task:
+            task_name = task.name
         else:
-            entry_name = entry
-        sys.exit(f"Entry {entry_name} is not installed")
+            task_name = task
+        sys.exit(f"task {task_name} is not installed")
 
 
-def service_status(entry: Entry | str):
+def service_status(task: Task | str):
     assert_systemd_available()
-    assert_entry_installed(entry)
+    assert_task_installed(task)
 
-    service_name, _ = entry_systemd_filenames(entry)
+    service_name, _ = task_systemd_filenames(task)
     command = ["systemctl", "status", service_name]
     if not is_root():
         command.append("--user")
     subprocess.run(command)
 
 
-def timer_status(entry: Entry | str):
+def timer_status(task: Task | str):
     assert_systemd_available()
-    assert_entry_installed(entry)
+    assert_task_installed(task)
 
-    _, timer_name = entry_systemd_filenames(entry)
+    _, timer_name = task_systemd_filenames(task)
     command = ["systemctl", "status", timer_name]
     if not is_root():
         command.append("--user")
@@ -103,16 +105,16 @@ class Operations(StrEnum):
 
 @dataclass
 class Crestic:
-    operation: Operations = field(init=False)
-    operation_str: InitVar[str]
     config_path: str
+    operation_str: InitVar[str]
+    task_name: InitVar[str | None] = None
+    operation: Operations = field(init=False)
     args: dict[str, any] = None
     config: Config = field(init=False)
-    entry: Entry | None = field(init=False)
-    entry_str: InitVar[str | None] = None
+    task: Task | None = field(init=False)
     env: dict[str, str] = field(default_factory=dict)
 
-    def __post_init__(self, operation_str: str, entry_str: str):
+    def __post_init__(self, operation_str: str, task_name: str):
         if operation_str is not None:
             self.operation = Operations(operation_str)
 
@@ -120,25 +122,36 @@ class Crestic:
             raise ValueError("Unable to find config file")
         self.config = Config(self.config_path)
 
-        if entry_str is not None:
+        if task_name is not None:
             try:
-                self.entry = self.config.entries[entry_str]
-            except KeyError:
-                valid_entries = ", ".join(self.config.entries.keys())
-                stderr(f"Unknown entry {entry_str}, valid entries: {valid_entries}", exit=True)
+                self.task = next(task for task in self.config.tasks if task.name == task_name)
+            except StopIteration:
+                valid_tasks = ", ".join([task.name for task in self.config.tasks])
+                stderr(f"Unknown task {task_name}, valid tasks: {valid_tasks}", exit=True)
 
-    def print_entries(self):
-        for entry in self.config.entries.keys():
-            stdout(entry)
-            if self.args.get("paths", False):
-                for path in self.config.entries[entry].paths:
-                    stdout("  -", path)
+    def print_tasks(self):
+        if self.args["detailed"]:
+            table = Table()
+            fields = ["Name", "Repository", "Paths"]
+            if self.args["passwords"]:
+                fields.append("Password")
+            table.field_names = fields
+            table.align["Paths"] = "l"
+            for task in self.config.tasks:
+                row = [task.name, task.repository, "\n".join(task.paths)]
+                if self.args["passwords"]:
+                    row.append(task.password)
+                table.add_row(row, divider=True)
+            stdout(table)
+        else:
+            for task in self.config.tasks:
+                stdout(task.name)
 
     def validate_restic(self):
-        if self.config.globals.restic_bin is None:
+        if self.config.restic_bin is None:
             return False
 
-        restic = self.config.globals.restic_bin
+        restic = self.config.restic_bin
         restic_version = subprocess.check_output([restic, "version"]).decode().replace("\n", "")
         restic_version_regex = r"restic [\d\.]+ compiled with"
 
@@ -153,32 +166,32 @@ class Crestic:
         self.env[key] = value
 
     def init_env(self):
-        if not os.path.exists(self.config.globals.cache_dir):
-            os.mkdir(self.config.globals.cache_dir, mode=0o750)
-        if not os.path.exists(self.config.globals.tmp_dir):
-            os.mkdir(self.config.globals.tmp_dir, mode=0o750)
+        if not os.path.exists(self.config.cache_dir):
+            os.mkdir(self.config.cache_dir, mode=0o750)
+        if not os.path.exists(self.config.tmp_dir):
+            os.mkdir(self.config.tmp_dir, mode=0o750)
         if not self.validate_restic():
             raise RuntimeError("Restic was not found in your PATH")
 
-        self.set_env("RESTIC_CACHE_DIR", self.config.globals.cache_dir)
-        self.set_env("TMPDIR", self.config.globals.tmp_dir)
+        self.set_env("RESTIC_CACHE_DIR", self.config.cache_dir)
+        self.set_env("TMPDIR", self.config.tmp_dir)
 
-        if self.entry.repo_type is RepositoryType.B2:
-            if self.entry.b2 is not None:
-                self.set_env("B2_ACCOUNT_ID", self.entry.b2.account_id)
-                self.set_env("B2_ACCOUNT_KEY", self.entry.b2.account_key)
-            elif self.config.globals.b2 is not None:
-                self.set_env("B2_ACCOUNT_ID", self.config.globals.b2.account_id)
-                self.set_env("B2_ACCOUNT_KEY", self.config.globals.b2.account_key)
+        if self.task.repo_type is RepositoryType.B2:
+            if self.task.b2 is not None:
+                self.set_env("B2_ACCOUNT_ID", self.task.b2.account_id)
+                self.set_env("B2_ACCOUNT_KEY", self.task.b2.account_key)
+            elif self.config.b2 is not None:
+                self.set_env("B2_ACCOUNT_ID", self.config.b2.account_id)
+                self.set_env("B2_ACCOUNT_KEY", self.config.b2.account_key)
             else:
-                raise AttributeError(f"{self.entry.name} is a B2 repository, but the credentials have not been defined")
+                raise AttributeError(f"{self.task.name} is a B2 repository, but the credentials have not been defined")
 
-        self.set_env("RESTIC_REPOSITORY", self.entry.repository)
-        self.set_env("RESTIC_PASSWORD", self.entry.password)
+        self.set_env("RESTIC_REPOSITORY", self.task.repository)
+        self.set_env("RESTIC_PASSWORD", self.task.password)
 
     def exec_restic_cmd(self, command: list[str]):
         self.init_env()
-        restic = self.config.globals.restic_bin
+        restic = self.config.restic_bin
         command = [str(part) for part in command]
         full_cmd = [restic] + command
         if self.args["dry_run"]:
@@ -189,8 +202,8 @@ class Crestic:
             stdout(f"Executing [{' '.join(full_cmd)}]")
             subprocess.run(full_cmd, env=self.env)
 
-    def backup_entry(self):
-        exclusions = self.entry.exclusions
+    def backup_task(self):
+        exclusions = self.task.exclusions
         cmd_exclusions = [v for elt in exclusions for v in ("--iexclude", elt)]
 
         command = ["backup", "--one-file-system", "--verbose"]
@@ -208,20 +221,20 @@ class Crestic:
                     command.extend(["--tag", tag])
 
         command.extend(cmd_exclusions)
-        command.extend(self.entry.paths)
+        command.extend(self.task.paths)
         self.exec_restic_cmd(command)
 
-    def initialize_entry(self):
-        command = ["init", "--repository-version", self.entry.repository_version]
+    def initialize_task(self):
+        command = ["init", "--repository-version", self.task.repository_version]
         self.exec_restic_cmd(command)
 
-    def check_entry(self):
+    def check_task(self):
         self.exec_restic_cmd(["check"])
 
-    def forget_entry(self):
+    def forget_task(self):
         command = ["forget"]
 
-        policy = self.entry.retention
+        policy = self.task.retention
 
         if policy is not None:
             command.extend(str(policy).split(" "))
@@ -230,54 +243,54 @@ class Crestic:
             command.append("--prune")
         self.exec_restic_cmd(command)
 
-    def prune_entry(self):
+    def prune_task(self):
         self.exec_restic_cmd(["prune"])
 
-    def list_entry_snapshots(self):
+    def list_task_snapshots(self):
         self.exec_restic_cmd(["snapshots"])
 
-    def unlock_entry(self):
+    def unlock_task(self):
         self.exec_restic_cmd(["unlock"])
 
     @property
-    def entry_systemd_filenames(self):
-        return entry_systemd_filenames(self.entry)
+    def task_systemd_filenames(self):
+        return task_systemd_filenames(self.task)
 
     @property
-    def entry_already_installed(self):
-        return entry_already_installed(self.entry)
+    def task_already_installed(self):
+        return task_already_installed(self.task)
 
-    def assert_entry_installed(self):
-        return assert_entry_installed(self.entry)
+    def assert_task_installed(self):
+        return assert_task_installed(self.task)
 
-    def install_entry(self):
+    def install_task(self):
         assert_systemd_available()
 
-        if self.entry_already_installed:
-            sys.exit(f"Entry {self.entry.name} is already installed")
+        if self.task_already_installed:
+            sys.exit(f"task {self.task.name} is already installed")
 
-        if self.entry.schedule is None:
-            sys.exit(f"No schedule has been defined for entry {self.entry.name}")
+        if self.task.schedule is None:
+            sys.exit(f"No schedule has been defined for task {self.task.name}")
 
         # Systemd units are basically super-simple ini files
-        service_name, timer_name = self.entry_systemd_filenames
+        service_name, timer_name = self.task_systemd_filenames
         service_config = configparser.ConfigParser()
         service_config.optionxform = str
         service_config["Unit"] = {
-            "Description": f"Crestic operations for entry {self.entry.name}",
+            "Description": f"Crestic operations for task {self.task.name}",
         }
         service_config["Service"] = {
-            "ExecStart": f"{shutil.which('crestic')} -c {os.path.realpath(self.config_path)} backup {self.entry.name}",
+            "ExecStart": f"{shutil.which('crestic')} -c {os.path.realpath(self.config_path)} backup {self.task.name}",
         }
         service_config["Install"] = {"WantedBy": "default.target"}
 
         timer_config = configparser.ConfigParser()
         timer_config.optionxform = str
         timer_config["Unit"] = {
-            "Description": f"Crestic timer for entry {self.entry.name}",
+            "Description": f"Crestic timer for task {self.task.name}",
         }
         timer_config["Timer"] = {
-            "OnCalendar": self.entry.schedule,
+            "OnCalendar": self.task.schedule,
             "Unit": service_name,
         }
         timer_config["Install"] = {"WantedBy": "timers.target"}
@@ -285,9 +298,11 @@ class Crestic:
         units_location = get_units_location()
 
         with open(units_location / service_name, "w") as f:
+            # noinspection PyTypeChecker
             service_config.write(f)
             stdout("Created unit", units_location / service_name)
         with open(units_location / timer_name, "w") as f:
+            # noinspection PyTypeChecker
             timer_config.write(f)
             stdout("Created unit", units_location / timer_name)
 
@@ -299,27 +314,27 @@ class Crestic:
         subprocess.run(command)
         reload_systemd()
 
-    def uninstall_entry(self):
+    def uninstall_task(self):
         assert_systemd_available()
-        self.assert_entry_installed()
+        self.assert_task_installed()
 
         units_location = get_units_location()
-        for filename in self.entry_systemd_filenames:
+        for filename in self.task_systemd_filenames:
             os.remove(units_location / filename)
 
         reload_systemd()
 
     def timer_status(self):
-        return timer_status(self.entry)
+        return timer_status(self.task)
 
     def service_status(self):
-        return service_status(self.entry)
+        return service_status(self.task)
 
     def unit_status(self):
-        if self.args["entry"]:
-            queries = [self.args["entry"]]
+        if self.args["task"]:
+            queries = [self.args["task"]]
         else:
-            queries = get_installed_entries()
+            queries = get_installed_tasks()
         for query in queries:
             if self.args["timer"]:
                 timer_status(query)
@@ -331,9 +346,9 @@ class Crestic:
 
     def set_timer(self):
         assert_systemd_available()
-        self.assert_entry_installed()
+        self.assert_task_installed()
 
-        _, timer_name = self.entry_systemd_filenames
+        _, timer_name = self.task_systemd_filenames
         command = ["systemctl"]
         if not is_root():
             command.append("--user")
@@ -346,17 +361,17 @@ class Crestic:
 
     def go(self):
         mapping = {
-            Operations.LIST: self.print_entries,
-            Operations.INSTALL: self.install_entry,
-            Operations.UNINSTALL: self.uninstall_entry,
+            Operations.LIST: self.print_tasks,
+            Operations.INSTALL: self.install_task,
+            Operations.UNINSTALL: self.uninstall_task,
             Operations.STATUS: self.unit_status,
             Operations.TIMER_CTRL: self.set_timer,
-            Operations.BACKUP: self.backup_entry,
-            Operations.CHECK: self.check_entry,
-            Operations.FORGET: self.forget_entry,
-            Operations.INIT: self.initialize_entry,
-            Operations.PRUNE: self.prune_entry,
-            Operations.SNAPSHOTS: self.list_entry_snapshots,
-            Operations.UNLOCK: self.unlock_entry,
+            Operations.BACKUP: self.backup_task,
+            Operations.CHECK: self.check_task,
+            Operations.FORGET: self.forget_task,
+            Operations.INIT: self.initialize_task,
+            Operations.PRUNE: self.prune_task,
+            Operations.SNAPSHOTS: self.list_task_snapshots,
+            Operations.UNLOCK: self.unlock_task,
         }
         mapping[self.operation]()

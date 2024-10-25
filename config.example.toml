@@ -1,0 +1,44 @@
+# (Optional) Location for Restic cache directory, a default for Linux is shown below
+cache_dir = "$HOME/.cache/crestic"
+# (Optional) Location for Restic temporary directory, a default for Linux is shown below
+tmp_dir = "/tmp/crestic"
+# (Optional) Location of installed Restic binary. Will use binary in the PATH by default.
+restic_bin = "/usr/bin/restic"
+# (Optional) Global settings for B2 repositories, can be overridden per-task
+[b2]
+account_id = "0000111122223333444455556"
+account_key = "A00112233445566778899AABBCCDDEE"
+
+[[tasks]]
+# Name of the configured backup task
+name = "CresticTest"
+# Location for the repository
+repository = "b2:bucket_name:/path-in-bucket"
+# Repository password
+password = "super-secret-password"
+# These are the paths you want to back up
+paths = [
+    "/any/local/path",
+    "/another/local/path",
+]
+# (Required for systemd units) Cron-like syntax for the generated systemd timer
+schedule = "*-*-* *:0/10:00"
+# (Optional) Repository version. Applies to Restic >=0.14.0. Defaults to 1.
+repository_version = 2
+# (Optional) The snapshot retention policy when running "crestic forget"
+[tasks.retention]
+last = 24
+hourly = 24
+daily = 7
+weekly = 5
+monthly = 12
+yearly = 2
+tag = [
+    "tag1",
+    "tag2",
+    "tag3",
+]
+# (Optional) Custom B2 settings for the task
+[tasks.b2]
+account_id = "1111222233334444555566667"
+account_key = "B112233445566778899AABBCCDDEEFF"

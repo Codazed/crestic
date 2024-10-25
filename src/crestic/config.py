@@ -1,10 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 import platform
 import os
 import shutil
-import yaml
+import tomllib
+from typing import Optional
 
 
 class PlatformNotImplementedError(NotImplementedError):
@@ -52,7 +53,6 @@ def _get_tmp_dir():
 
 
 def _find_config_win():
-    config_home = _get_home()
     paths_to_search = (_get_home(), os.getcwd())
     for path in paths_to_search:
         if os.path.exists(Path(path) / "config.yml"):
@@ -88,18 +88,6 @@ class B2Config:
     account_key: str
 
 
-@dataclass
-class GlobalConfig:
-    cache_dir: str = _get_cache_dir()
-    tmp_dir: str = _get_tmp_dir()
-    restic_bin: str = find_restic()
-    b2: B2Config | None = None
-
-    def __post_init__(self):
-        if self.b2 is not None:
-            self.b2 = B2Config(**self.b2)
-
-
 class RepositoryType(StrEnum):
     B2 = "b2"
     FILESYSTEM = "fs"
@@ -127,7 +115,7 @@ class RetentionPolicy:
 
 
 @dataclass
-class Entry:
+class Task:
     name: str
     repository: str
     password: str
@@ -145,24 +133,30 @@ class Entry:
         else:
             return RepositoryType.FILESYSTEM
 
+    # noinspection PyArgumentList
     def __post_init__(self):
         if self.retention is not None:
             self.retention = RetentionPolicy(**self.retention)
         if self.b2 is not None:
             self.b2 = B2Config(**self.b2)
 
-
-@dataclass
 class Config:
-    globals: GlobalConfig
-    entries: dict[str, Entry]
+    cache_dir: str
+    tmp_dir: str
+    restic_bin: str
+    b2: Optional[B2Config] = None
+    tasks: list[Task]
 
     def __init__(self, file_path: str):
-        with open(file_path, "r") as f:
-            loaded = yaml.safe_load(f)
-        self.globals = GlobalConfig(**loaded.get("global", None))
-        entries: dict[str, any] = loaded.get("entries", {})
-        self.entries = {}
-        if entries is not None:
-            for name, entry in entries.items():
-                self.entries[name] = Entry(name=name, **entry)
+        with open(file_path, "rb") as f:
+            loaded = tomllib.load(f)
+        self.cache_dir = loaded.get("cache_dir", _get_cache_dir())
+        self.tmp_dir = loaded.get("tmp_dir", _get_tmp_dir())
+        self.restic_bin = loaded.get("restic_bin", find_restic())
+        global_b2: dict | None = loaded.get("b2", None)
+        if global_b2 is not None:
+            self.b2 = B2Config(**global_b2)
+        tasks: list[dict] = loaded.get("tasks", [])
+        self.tasks = []
+        for task in tasks:
+            self.tasks.append(Task(**task))
