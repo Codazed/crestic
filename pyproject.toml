@@ -7,17 +7,14 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-prettytable = "^3.11.0"
+python = "^3.12"
+prettytable = "^3.16.0"
 
 [tool.poetry.scripts]
 crestic = "crestic.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.10.0"
-
-[tool.black]
-line-length = 120
+ruff = "^0.11.2"
 
 [build-system]
 requires = ["poetry-core"]
