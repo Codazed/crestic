@@ -5,9 +5,8 @@ import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional, Self, TypedDict
+from typing import Optional, Self, TypedDict
 
-import lonely
 import tomllib
 
 if platform.system() == "Linux":
@@ -151,7 +150,7 @@ class ResticEnvironment(TypedDict):
     B2_ACCOUNT_KEY: str | None
 
 
-class Config(metaclass=lonely.Singleton):
+class Config:
     path: Path
     cache_dir: Path
     tmp_dir: Path
