@@ -1,62 +1,53 @@
+import importlib.resources
+import os
+import platform
+import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-import platform
-import os
-import shutil
+from typing import Any, Optional, Self, TypedDict
+
+import lonely
 import tomllib
-from typing import Optional
 
-
-class PlatformNotImplementedError(NotImplementedError):
-    def __init__(self):
-        super().__init__(f"Unimplemented platform {platform.system()}")
+if platform.system() == "Linux":
+    USER_LOCATION = Path.home() / ".config/crestic/config.toml"
+    ROOT_LOCATION = Path("/etc/crestic/config.toml")
+elif platform.system() == "Windows":
+    USER_LOCATION = Path.home() / "AppData/Local/crestic/config.toml"
+    ROOT_LOCATION = USER_LOCATION
+else:
+    raise NotImplementedError(platform.system())
 
 
 def _get_home():
-    if platform.system() == "Windows":
-        return str(Path(os.environ.get("APPDATA")) / "crestic")
-    elif platform.system() == "Linux":
-        xdg_home = "XDG_CONFIG_HOME"
-        if xdg_home in os.environ.keys():
-            return str(Path(os.environ.get(xdg_home)) / "crestic")
-        elif "HOME" in os.environ.keys():
-            return str(Path(os.environ.get("HOME")) / ".config" / "crestic")
-        else:
-            return os.getcwd()
-    else:
-        raise PlatformNotImplementedError()
+    return USER_LOCATION.parent
 
 
 def _get_cache_dir():
     if platform.system() == "Windows":
-        return str(Path(_get_home()) / "cache")
-    elif platform.system() == "Linux":
-        xdg_home = "XDG_CACHE_HOME"
-        if xdg_home in os.environ.keys():
-            return str(Path(os.environ.get(xdg_home)))
-        elif "HOME" in os.environ.keys():
-            return str(Path(os.environ.get("HOME")) / ".cache" / "crestic")
-        else:
-            return "/var/tmp/crestic"
-    else:
-        raise PlatformNotImplementedError()
+        return _get_home() / "cache"
+    if platform.system() == "Linux":
+        if "XDG_CACHE_HOME" in os.environ:
+            return Path(os.environ.get("XDG_CACHE_HOME"))
+        return Path.home() / ".cache/crestic"
+    raise NotImplementedError(platform.system())
 
 
 def _get_tmp_dir():
     if platform.system() == "Windows":
-        return str(Path(os.environ.get("TEMP")) / "crestic")
-    elif platform.system() == "Linux":
+        return Path(os.environ.get("TEMP")) / "crestic"
+    if platform.system() == "Linux":
         return "/tmp/crestic"
-    else:
-        raise PlatformNotImplementedError()
+    raise NotImplementedError(platform.system())
 
 
 def _find_config_win():
     paths_to_search = (_get_home(), os.getcwd())
     for path in paths_to_search:
-        if os.path.exists(Path(path) / "config.yml"):
-            return str(Path(path) / "config.yml")
+        cpath = Path(path) / "config.toml"
+        if cpath.exists():
+            return cpath
     else:
         return None
 
@@ -64,18 +55,24 @@ def _find_config_win():
 def _find_config_linux():
     paths_to_search = ("/etc/crestic", _get_home(), os.getcwd())
     for path in paths_to_search:
-        if os.path.exists(Path(path) / "config.yml"):
-            return str(Path(path) / "config.yml")
+        cpath = Path(path) / "config.toml"
+        if cpath.exists():
+            return cpath
     return None
 
 
 def find_config():
     if platform.system() == "Windows":
+        if USER_LOCATION.exists():
+            return USER_LOCATION
         return _find_config_win()
-    elif platform.system() == "Linux":
+    if platform.system() == "Linux":
+        if os.geteuid() == 0 and ROOT_LOCATION.exists():
+            return ROOT_LOCATION
+        if USER_LOCATION.exists():
+            return USER_LOCATION
         return _find_config_linux()
-    else:
-        raise PlatformNotImplementedError()
+    raise NotImplementedError(platform.system())
 
 
 def find_restic():
@@ -103,6 +100,10 @@ class RetentionPolicy:
     yearly: int = None
     tag: list[str] = None
 
+    def as_args(self) -> list[str]:
+        """Get the retention policy as a list of arguments."""
+        return str(self).split()
+
     def __str__(self):
         string = []
         for attr, val in vars(self).items():
@@ -115,23 +116,21 @@ class RetentionPolicy:
 
 
 @dataclass
-class Task:
+class Repository:
     name: str
-    repository: str
+    location: str
     password: str
     paths: tuple[str]
     exclusions: tuple[str] = ()
-    repository_version: int = 2
-    schedule: str = None
-    retention: RetentionPolicy = None
+    version: int = 2
+    retention: RetentionPolicy | None = None
     b2: B2Config | None = None
 
     @property
-    def repo_type(self):
-        if self.repository.startswith("b2"):
+    def type(self):
+        if self.location.startswith("b2"):
             return RepositoryType.B2
-        else:
-            return RepositoryType.FILESYSTEM
+        return RepositoryType.FILESYSTEM
 
     # noinspection PyArgumentList
     def __post_init__(self):
@@ -141,23 +140,87 @@ class Task:
             self.b2 = B2Config(**self.b2)
 
 
-class Config:
-    cache_dir: str
-    tmp_dir: str
+class ResticEnvironment(TypedDict):
+    """Environment variables for Restic."""
+
+    RESTIC_CACHE_DIR: str
+    TMPDIR: str
+    RESTIC_REPOSITORY: str
+    RESTIC_PASSWORD: str
+    B2_ACCOUNT_ID: str | None
+    B2_ACCOUNT_KEY: str | None
+
+
+class Config(metaclass=lonely.Singleton):
+    path: Path
+    cache_dir: Path
+    tmp_dir: Path
     restic_bin: str
     b2: Optional[B2Config] = None
-    tasks: list[Task]
+    repos: dict[str, Repository]
 
-    def __init__(self, file_path: str):
-        with open(file_path, "rb") as f:
+    def __init__(self, file_path: str | Path):
+        self.path = Path(file_path).resolve(strict=True)
+        with self.path.open("rb") as f:
             loaded = tomllib.load(f)
-        self.cache_dir = loaded.get("cache_dir", _get_cache_dir())
-        self.tmp_dir = loaded.get("tmp_dir", _get_tmp_dir())
+        self.cache_dir = Path(loaded.get("cache_dir", _get_cache_dir()))
+        self.tmp_dir = Path(loaded.get("tmp_dir", _get_tmp_dir()))
         self.restic_bin = loaded.get("restic_bin", find_restic())
         global_b2: dict | None = loaded.get("b2", None)
         if global_b2 is not None:
             self.b2 = B2Config(**global_b2)
-        tasks: list[dict] = loaded.get("tasks", [])
-        self.tasks = []
-        for task in tasks:
-            self.tasks.append(Task(**task))
+        repositories: list[dict] = loaded.get("repository", [])
+        self.repos = {}
+        for repo in repositories:
+            self.repos[repo["name"]] = Repository(**repo)
+
+    @classmethod
+    def create(cls) -> Self:
+        """Create a new config file at one of the default paths.
+
+        Returns:
+            A new Config object created from the new config file.
+        """
+        if platform.system() == "Linux":
+            path = ROOT_LOCATION if os.geteuid() == 0 else USER_LOCATION
+        else:
+            path = USER_LOCATION
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        template = importlib.resources.files("crestic").joinpath("data/config.example.toml")
+        with importlib.resources.as_file(template) as template_file:
+            shutil.copyfile(template_file, path)
+        return cls(path)
+
+    def env(self, repository: Repository) -> ResticEnvironment:
+        """Get the relevant environment variables for a given repository.
+
+        Args:
+            repository(Repository): The repository object to create env variables for.
+
+        Returns:
+            A dictionary of environment variables for the given repository.
+        """
+        env: ResticEnvironment = {
+            "RESTIC_CACHE_DIR": str(self.cache_dir),
+            "TMPDIR": str(self.tmp_dir),
+            "RESTIC_REPOSITORY": repository.location,
+            "RESTIC_PASSWORD": repository.password,
+            "B2_ACCOUNT_ID": None,
+            "B2_ACCOUNT_KEY": None,
+        }
+        if repository.type == RepositoryType.B2:
+            if repository.b2:
+                env["B2_ACCOUNT_ID"] = repository.b2.account_id
+                env["B2_ACCOUNT_KEY"] = repository.b2.account_key
+            elif self.b2:
+                env["B2_ACCOUNT_ID"] = self.b2.account_id
+                env["B2_ACCOUNT_KEY"] = self.b2.account_key
+            else:
+                msg = (
+                    f"{repository.name} is a B2 repository, but the credentials have not "
+                    f"been defined"
+                )
+                raise AttributeError(msg)
+
+        return env

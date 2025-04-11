@@ -5,13 +5,15 @@ description = "Configurable command invocation for restic"
 authors = ["Joshua Luce <luce@codazed.dev>"]
 license = "MIT"
 readme = "README.md"
+include = [{ path = "config.example.toml", format = ["sdist", "wheel"] }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 prettytable = "^3.16.0"
+typer = "^0.15.2"
 
 [tool.poetry.scripts]
-crestic = "crestic.__main__:main"
+crestic = "crestic.cli:app"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.2"

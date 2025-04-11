@@ -9,11 +9,11 @@ restic_bin = "/usr/bin/restic"
 account_id = "0000111122223333444455556"
 account_key = "A00112233445566778899AABBCCDDEE"
 
-[[tasks]]
-# Name of the configured backup task
+[[repository]]
+# Name of the repository
 name = "CresticTest"
 # Location for the repository
-repository = "b2:bucket_name:/path-in-bucket"
+location = "b2:bucket_name:/path-in-bucket"
 # Repository password
 password = "super-secret-password"
 # These are the paths you want to back up
@@ -21,12 +21,10 @@ paths = [
     "/any/local/path",
     "/another/local/path",
 ]
-# (Required for systemd units) Cron-like syntax for the generated systemd timer
-schedule = "*-*-* *:0/10:00"
 # (Optional) Repository version. Applies to Restic >=0.14.0. Defaults to 1.
-repository_version = 2
+version = 2
 # (Optional) The snapshot retention policy when running "crestic forget"
-[tasks.retention]
+[repository.retention]
 last = 24
 hourly = 24
 daily = 7
@@ -39,6 +37,6 @@ tag = [
     "tag3",
 ]
 # (Optional) Custom B2 settings for the task
-[tasks.b2]
+[repository.b2]
 account_id = "1111222233334444555566667"
 account_key = "B112233445566778899AABBCCDDEEFF"

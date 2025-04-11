@@ -1,24 +1,30 @@
+line-length = 94
+
 [lint]
 select = [
-    "ARG",
-    "B",
-    "COM",
-    "C4",
-    "D",
-    "DOC",
-    "E",
-    "FIX",
-    "I",
-    "N",
-    "PERF",
-    "PT",
-    "PTH",
-    "Q",
-    "RET",
-    "S",
-    "SIM",
-    "UP",
-    "W",
+    "ARG",  # flake8-unused-arguments
+    "B",    # flake8-bugbear
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "D",    # pydocstyle
+    "DOC",  # pydoclint
+    "E",    # pycodestyle: Error
+    "FIX",  # flake8-fixme
+    "I",    # isort
+    "N",    # pep8-naming
+    "PERF", # perflint
+    "PT",   # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "Q",    # flake8-quotes
+    "RET",  # flake8-return
+    "S",    # flake8-bandit
+    "SIM",  # flake8-simplify
+    "UP",   # pyupgrade
+    "W",    # pycodestyle: Warning
+]
+ignore = [
+    "D105", # undocumented-magic-method
+    "S603", # subprocess-without-shell-equals-true
 ]
 
 [lint.pydocstyle]
