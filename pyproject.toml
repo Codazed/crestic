@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crestic"
-version = "0.1.0"
+version = "0.0.0"
 description = "Configurable command invocation for restic"
 authors = ["Joshua Luce <luce@codazed.dev>"]
 license = "MIT"
@@ -18,6 +18,13 @@ crestic = "crestic.cli:app"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.2"
 
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
