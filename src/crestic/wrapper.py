@@ -100,3 +100,7 @@ class Wrapper:
             args.append("--prune")
 
         return self.restic_cmd(*args)
+
+    def snapshots(self):
+        """Build a `restic snapshots` command."""
+        return self.restic_cmd("snapshots")
