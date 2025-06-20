@@ -9,14 +9,13 @@ include = [{ path = "config.example.toml", format = ["sdist", "wheel"] }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-prettytable = "^3.16.0"
-typer = "^0.15.2"
+typer = "^0.16.0"
 
 [tool.poetry.scripts]
 crestic = "crestic.cli:app"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.2"
+ruff = "^0.12.0"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
