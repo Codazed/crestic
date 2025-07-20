@@ -88,6 +88,15 @@ class Wrapper:
         """Build a `restic check` command."""
         return self.restic_cmd("check")
 
+    def diff(self, snapshots: tuple[str, str], metadata: bool = False):
+        """Build a `restic diff` command."""
+        args = ["diff", snapshots[0], snapshots[1]]
+
+        if metadata:
+            args.append("--metadata")
+
+        return self.restic_cmd(*args)
+
     def forget(self, prune: bool = False):
         """Build a `restic forget` command."""
         args = ["forget", "--verbose"]

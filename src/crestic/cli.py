@@ -121,6 +121,7 @@ def check_cmd(
 
 @app.command(name="diff")
 def diff_cmd(
+    ctx: Context,
     repository: Annotated[str, Argument(help="Repository to diff.")],
     snapshots: Annotated[
         tuple[str, str],
@@ -129,6 +130,14 @@ def diff_cmd(
     metadata: Annotated[bool, Option(help="Print changes in metadata.")] = False,
 ):
     """Show differences from the first to second snapshot in the specified repository."""
+    config: crestic.config.Config = ctx.obj["config"]
+    repo = config.repos[repository]
+    wrapper = crestic.wrapper.Wrapper(config, repo)
+    command = wrapper.diff(snapshots, metadata)
+    if ctx.obj["print_command"]:
+        rich.print(str(command))
+    else:
+        wrapper.exec(command)
 
 
 class DumpArchiveFormat(enum.StrEnum):
@@ -181,6 +190,7 @@ def forget_cmd(
         Option(help="Automatically run the 'prune' command if snapshots have been removed."),
     ],
 ):
+    """Remove snapshots from the specified repository."""
     config: crestic.config.Config = ctx.obj["config"]
     repo = config.repos[repository]
     wrapper = crestic.wrapper.Wrapper(config, repo)
