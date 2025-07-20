@@ -1,29 +1,30 @@
-[tool.poetry]
+[project]
 name = "crestic"
-version = "0.0.0"
 description = "Configurable command invocation for restic"
-authors = ["Joshua Luce <luce@codazed.dev>"]
-license = "MIT"
+authors = [{ name = "Joshua Luce", email = "luce@codazed.dev" }]
+requires-python = "~=3.12.0"
 readme = "README.md"
-include = [{ path = "config.example.toml", format = ["sdist", "wheel"] }]
+license = "MIT"
+dependencies = ["typer>=0.16.0,<0.17"]
+dynamic = ["version"]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-typer = "^0.16.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 crestic = "crestic.cli:app"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.12.0"
+[dependency-groups]
+dev = [
+    "ruff==0.12.4",
+]
 
-[tool.poetry.requires-plugins]
-poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+[tool.hatch.build.targets.sdist]
+include = ["config.example.toml"]
 
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
+[tool.hatch.build.targets.wheel]
+include = ["config.example.toml"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
